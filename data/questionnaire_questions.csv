@@ -1,0 +1,7 @@
+id,text,type
+1,"Why are you interested in this product? Select all that apply.","multiple_choice"
+2,"Tell us anything else you'd like your provider to know when prescribing your medication.","text"
+3,"What is your current weight?","text"
+4,"Which of the following have you tried in the past? Select all that apply.","multiple_choice"
+5,"What's your weight loss goal?","multiple_choice"
+6,"Please list any new medications you are taking.","text" 
