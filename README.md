@@ -70,7 +70,7 @@ bioverse-questionnaire/
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/bioverse-questionnaire.git
+git clone https://github.com/alecpos/bioverse-questionnaire.git
 cd bioverse-questionnaire
 ```
 
