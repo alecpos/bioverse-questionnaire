@@ -1,16 +1,31 @@
 import { NextApiRequest } from 'next';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { Pool } from 'pg';
+import { Pool, PoolClient, QueryResult } from 'pg';
+import db from './db';
 
 // JWT Secret from environment variable
 const JWT_SECRET = process.env.JWT_SECRET || 'bioverse_secret_key_change_me_in_production';
+
+// Create a type for our DB interface to handle the custom db object
+type DbInterface = {
+  query: (text: string, params?: any[]) => Promise<QueryResult<any>>;
+  getClient: () => Promise<{ client: PoolClient; done: () => void }>;
+  transaction: <T>(callback: (client: PoolClient) => Promise<T>) => Promise<T>;
+};
 
 // User type definition
 export interface User {
   id: number;
   username: string;
   isAdmin: boolean;
+}
+
+// Extend the NextApiRequest interface
+declare module 'next' {
+  interface NextApiRequest {
+    user?: User;
+  }
 }
 
 // JWT token payload structure
@@ -72,7 +87,7 @@ export const getTokenFromRequest = (req: NextApiRequest): string | null => {
 /**
  * Authenticate a user with username and password
  */
-export const authenticateUser = async (username: string, password: string, db: Pool): Promise<User | null> => {
+export const authenticateUser = async (username: string, password: string, dbClient: DbInterface | Pool = db): Promise<User | null> => {
   // Hardcoded credentials for demo/testing
   if (username === 'admin' && password === 'password123') {
     return { id: 1, username: 'admin', isAdmin: true };
@@ -88,7 +103,7 @@ export const authenticateUser = async (username: string, password: string, db: P
   
   // First, try to find the user with bcrypt hashed password
   try {
-    const result = await db.query(
+    const result = await dbClient.query(
       'SELECT id, username, password_hash, is_admin FROM users WHERE username = $1',
       [username]
     );
@@ -117,7 +132,7 @@ export const authenticateUser = async (username: string, password: string, db: P
   
   // Next, try plain text password as fallback
   try {
-    const result = await db.query(
+    const result = await dbClient.query(
       'SELECT id, username, password, is_admin FROM users WHERE username = $1',
       [username]
     );
@@ -144,9 +159,9 @@ export const authenticateUser = async (username: string, password: string, db: P
 /**
  * Get a user by ID
  */
-export const getUserById = async (id: number, db: Pool): Promise<User | null> => {
+export const getUserById = async (id: number, dbClient: DbInterface | Pool = db): Promise<User | null> => {
   try {
-    const result = await db.query(
+    const result = await dbClient.query(
       'SELECT id, username, is_admin FROM users WHERE id = $1',
       [id]
     );
@@ -170,11 +185,11 @@ export const getUserById = async (id: number, db: Pool): Promise<User | null> =>
  */
 export const createUser = async (
   userData: { username: string; password: string; email: string; isAdmin?: boolean },
-  db: Pool
+  dbClient: DbInterface | Pool = db
 ): Promise<User | null> => {
   try {
     // First, check if user already exists
-    const checkResult = await db.query(
+    const checkResult = await dbClient.query(
       'SELECT id FROM users WHERE username = $1',
       [userData.username]
     );
@@ -192,7 +207,7 @@ export const createUser = async (
     }
     
     // Insert the new user with password hash if possible
-    const result = await db.query(
+    const result = await dbClient.query(
       hashedPassword
         ? 'INSERT INTO users (username, password_hash, email, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, is_admin'
         : 'INSERT INTO users (username, password, email, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, username, is_admin',
@@ -212,7 +227,7 @@ export const createUser = async (
 /**
  * Get the authenticated user from the request
  */
-export const getAuthenticatedUser = async (req: NextApiRequest, db: Pool): Promise<User | null> => {
+export const getAuthenticatedUser = async (req: NextApiRequest, dbClient: DbInterface | Pool = db): Promise<User | null> => {
   const token = getTokenFromRequest(req);
   
   if (!token) {
@@ -224,14 +239,14 @@ export const getAuthenticatedUser = async (req: NextApiRequest, db: Pool): Promi
     return null;
   }
   
-  return await getUserById(decodedToken.id, db);
+  return await getUserById(decodedToken.id, dbClient);
 };
 
 /**
  * Middleware for authenticating API routes
  */
 export const withAuth = (handler: any) => async (req: NextApiRequest, res: any) => {
-  const user = await getAuthenticatedUser(req, db);
+  const user = await getAuthenticatedUser(req);
   
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -248,7 +263,7 @@ export const withAuth = (handler: any) => async (req: NextApiRequest, res: any) 
  * Middleware for authenticating admin API routes
  */
 export const withAdminAuth = (handler: any) => async (req: NextApiRequest, res: any) => {
-  const user = await getAuthenticatedUser(req, db);
+  const user = await getAuthenticatedUser(req);
   
   if (!user) {
     return res.status(401).json({ error: 'Unauthorized' });

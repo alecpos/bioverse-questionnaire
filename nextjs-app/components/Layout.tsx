@@ -70,7 +70,7 @@ const Layout: React.FC<LayoutProps> = ({
       }
       setIsRedirecting(true);
       router.push('/');
-    } else if (adminOnly && user && user.is_admin === false) {
+    } else if (adminOnly && user && user.isAdmin === false) {
       showToast(toast, {
         title: 'Access denied',
         description: 'You do not have permission to access this page.',
