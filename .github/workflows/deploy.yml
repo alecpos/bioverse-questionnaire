@@ -35,6 +35,16 @@ jobs:
           npm run build
         env:
           NODE_ENV: production
+          # Add dummy environment variables for CI build
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          JWT_SECRET: dummy_secret_for_ci_build
+          
+      # For now, we're just verifying the build works
+      - name: Deployment verification
+        run: |
+          echo "✅ Build passed successfully"
+          echo "✅ This is a placeholder for actual deployment"
+          echo "✅ For real deployment, configure with your hosting provider"
           
       # Uncomment and configure these steps when you're ready to deploy
       

@@ -26,11 +26,20 @@ jobs:
 
       - name: Check code formatting
         working-directory: ./nextjs-app
-        run: npm run lint || echo "Linting issues found"
+        run: npm run lint --no-fix || echo "Linting issues found but continuing..."
 
       - name: Build
         working-directory: ./nextjs-app
+        env:
+          NODE_ENV: production
+          # Add dummy environment variables required for the build
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          JWT_SECRET: dummy_secret_for_build
         run: npm run build
+
+      # Add success message on completion
+      - name: Build succeeded
+        run: echo "✅ Build passed successfully"
 
       # Uncomment when you have tests
       # - name: Run tests
