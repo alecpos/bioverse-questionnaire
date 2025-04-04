@@ -6,8 +6,10 @@ const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:post
 // Create a new Pool instance for database connections
 const pool = new Pool({
   connectionString,
-  // Enable SSL in production (like on Heroku)
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // Enable SSL for Supabase connections
+  ssl: {
+    rejectUnauthorized: false
+  },
 });
 
 // Log connection events for debugging

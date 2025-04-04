@@ -40,10 +40,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
     });
     
     const client = await pool.connect();
     console.log('Connected to database for initialization');
+    
+    // Disable foreign key constraints temporarily
+    await client.query('SET session_replication_role = replica;');
     
     // Create tables
     await client.query(`
@@ -199,52 +203,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Insert questions into the database
     for (const question of questions) {
-      // Parse the JSON content from the 'question' field
       try {
         console.log(`Processing question ID: ${question.id}`);
         
-        // Try to parse the JSON content
-        let questionData;
-        try {
-          // If the field is already a JSON object, use it directly
-          if (typeof question.question === 'object') {
-            questionData = question.question;
-          } else {
-            // Otherwise, parse it as a string
-            questionData = JSON.parse(question.question);
-          }
-        } catch (e) {
-          console.error(`Failed to parse JSON for question ${question.id}:`, e);
-          console.log(`Raw question data:`, question);
-          continue; // Skip this question
+        // Clean up the ID and question fields as they might contain extra characters
+        let questionId = question.id;
+        if (questionId.includes('\t')) {
+          questionId = questionId.split('\t')[0];
         }
         
-        // Get the type and map 'mcq' to 'multiple_choice' for the database
-        const type = questionData.type === 'mcq' ? 'multiple_choice' : 'text';
+        // Handle the complex CSV structure from the file
+        let questionData;
+        let questionText = '';
+        let type = 'text';
+        let options = [];
         
-        // Get the actual question text
-        const questionText = questionData.question || 'No question text provided';
+        // Try to extract a complete JSON object from all fields
+        const allFields = Object.values(question).join(' ');
+        const jsonMatch = allFields.match(/\{[\s\S]*\}/);
         
-        console.log(`Question ${question.id}: "${questionText}" (${type})`);
-        
-        // Insert the question
-        await client.query(
-          `INSERT INTO questions (id, text, type) 
-           VALUES ($1, $2, $3)`,
-          [question.id, questionText, type]
-        );
-        
-        // If it's a multiple choice question, add the options from the JSON
-        if (type === 'multiple_choice' && questionData.options && Array.isArray(questionData.options)) {
-          console.log(`Adding ${questionData.options.length} options for question ${question.id}`);
-          
-          for (const optionText of questionData.options) {
+        if (jsonMatch) {
+          try {
+            const jsonStr = jsonMatch[0];
+            questionData = JSON.parse(jsonStr);
+            
+            // Extract question properties
+            questionText = questionData.question || 'No question text provided';
+            type = questionData.type === 'mcq' ? 'multiple_choice' : 'text';
+            options = questionData.options || [];
+            
+            console.log(`Successfully parsed question: "${questionText}" (${type})`);
+            
+            // Insert the question
             await client.query(
-              `INSERT INTO question_options (question_id, option_text) 
-               VALUES ($1, $2)`,
-              [question.id, optionText]
+              `INSERT INTO questions (id, text, type) 
+               VALUES ($1, $2, $3)`,
+              [parseInt(questionId), questionText, type]
             );
+            
+            // If it's a multiple choice question, add the options
+            if (type === 'multiple_choice' && options.length > 0) {
+              console.log(`Adding ${options.length} options for question ${questionId}`);
+              
+              for (const optionText of options) {
+                await client.query(
+                  `INSERT INTO question_options (question_id, option_text) 
+                   VALUES ($1, $2)`,
+                  [parseInt(questionId), optionText]
+                );
+              }
+            }
+          } catch (parseErr) {
+            console.error(`Error parsing JSON for question ${questionId}:`, parseErr);
           }
+        } else {
+          console.error(`Could not extract JSON from question ${questionId}`);
         }
       } catch (err) {
         console.error(`Error processing question ${question.id}:`, err);
@@ -277,6 +290,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     
     console.log('Data from CSV files loaded successfully');
+    
+    // Re-enable foreign key constraints before finishing
+    await client.query('SET session_replication_role = DEFAULT;');
     
     client.release();
     await pool.end();

@@ -29,8 +29,9 @@ This application allows users to fill out questionnaires and administrators to v
 
 - **Frontend**: Next.js, TypeScript, Chakra UI
 - **Backend**: Next.js API routes
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL (local or Supabase)
 - **Authentication**: JWT (JSON Web Tokens)
+- **Deployment**: Vercel
 
 ## Requirements Implemented
 
@@ -59,7 +60,7 @@ All requirements from the exercise prompt have been implemented:
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- PostgreSQL database
+- PostgreSQL database (local or Supabase)
 
 ### Setup
 
@@ -70,11 +71,16 @@ All requirements from the exercise prompt have been implemented:
    ```
 
 2. Set up the database:
+   
+   **Option A: Local PostgreSQL**
    ```bash
    # Create database and set up schema
    psql -c "CREATE DATABASE bioverse_questionnaire;"
    psql -d bioverse_questionnaire -f schema.sql
    ```
+   
+   **Option B: Supabase**
+   See [Supabase Migration Guide](SUPABASE-MIGRATION.md) for detailed instructions.
 
 3. Install dependencies:
    ```bash
@@ -84,7 +90,12 @@ All requirements from the exercise prompt have been implemented:
 
 4. Create a `.env.local` file:
    ```
+   # For local PostgreSQL
    DATABASE_URL=postgresql://username:password@localhost:5432/bioverse_questionnaire
+   
+   # For Supabase
+   # DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+   
    JWT_SECRET=your_secret_key_for_jwt
    ```
 
@@ -102,17 +113,21 @@ All requirements from the exercise prompt have been implemented:
 
 For detailed deployment instructions, refer to:
 - [Vercel Deployment Guide](deploy-vercel.md)
+- [Vercel + Supabase Deployment Guide](VERCEL-SUPABASE-DEPLOYMENT.md)
 - [General Deployment Guide](DEPLOYMENT.md)
 
-### Quick Vercel Deployment
+### Quick Vercel Deployment with Supabase
 
-1. Push your code to GitHub
-2. Connect your Vercel account to GitHub
-3. Import the repository in Vercel
-4. Set environment variables:
-   - `DATABASE_URL`
-   - `JWT_SECRET`
-5. Deploy
+1. Set up a Supabase project and get your connection string
+2. Push your code to GitHub
+3. Connect your Vercel account to GitHub
+4. Import the repository in Vercel
+5. Set environment variables:
+   - `DATABASE_URL` (your Supabase connection string)
+   - `JWT_SECRET` (generate with: `openssl rand -base64 32`)
+   - `NODE_ENV=production`
+   - `DB_INIT_TOKEN` (for database initialization - optional)
+6. Deploy and initialize your database using the `/api/init-db?token=your_token` endpoint
 
 ## Project Structure
 

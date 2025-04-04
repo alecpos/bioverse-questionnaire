@@ -113,4 +113,11 @@ import_csv_data.js
 insert_questionnaires.js
 insert_questionnaires.sql
 nextjs-app/scripts/add-email-to-users.js
-nextjs-app/scripts/cleanup-duplicate-users.js 
+nextjs-app/scripts/cleanup-duplicate-users.js
+
+# Supabase specific
+.supabase/
+**/supabase/.branches/
+**/supabase/.temp/
+**/supabase/.env
+**/supabase/config.toml 
