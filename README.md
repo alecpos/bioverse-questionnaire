@@ -11,9 +11,11 @@ This application allows users to fill out questionnaires and administrators to v
 [Access the deployed application here](https://bioverse-questionnaire-pq1d.vercel.app/admin) - Admin Dashboard
 
 **Demo Credentials:**
-- Admin User: `admin` / `password123`
-- Regular User: `john` / `password123` 
+- Admin User: `admin` / `admin123`
+- Regular User: `user` / `user123` 
 - Additional User: `jane` / `password123`
+- Additional User 2: `john` / `password123`
+
 
 ### Features
 
