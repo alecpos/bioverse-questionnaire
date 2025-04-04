@@ -25,7 +25,6 @@ This application allows users to fill out questionnaires and administrators to v
 - Pre-filled responses for previously answered questions
 - Admin dashboard with completion statistics
 - Timezone-aware date display
-- CSV exports for questionnaire data
 
 ## Tech Stack
 
