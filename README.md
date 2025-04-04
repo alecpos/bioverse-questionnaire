@@ -162,10 +162,6 @@ The application uses the following core tables:
 - `user_responses` - Stored user answers
 - `questionnaire_completions` - Tracks completed questionnaires
 
-## Testing
-
-For detailed testing instructions, see [test-instructions.md](test-instructions.md).
-
 ## Contributing
 
 Please see the [contributing guide](CONTRIBUTING.md) for details.
