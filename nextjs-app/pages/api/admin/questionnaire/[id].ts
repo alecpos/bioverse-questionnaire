@@ -16,34 +16,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { id } = req.query;
     
-    if (!id) {
-      return res.status(400).json({ error: 'Missing questionnaire ID' });
-    }
-    
-    // Parse ID as number
-    const questionnaireId = parseInt(String(id), 10);
-    
-    if (isNaN(questionnaireId)) {
+    if (!id || Array.isArray(id)) {
       return res.status(400).json({ error: 'Invalid questionnaire ID' });
     }
-
-    // Fetch questionnaire details
-    const questionnaire = await db.query(
-      'SELECT id, name, description FROM questionnaires WHERE id = $1',
-      [questionnaireId]
-    );
+    
+    // Get questionnaire details
+    const questionnaire = await db.query(`
+      SELECT 
+        id, 
+        name, 
+        description 
+      FROM 
+        questionnaires 
+      WHERE 
+        id = $1
+    `, [id]);
 
     if (questionnaire.rows.length === 0) {
       return res.status(404).json({ error: 'Questionnaire not found' });
     }
 
-    // Fetch all questions for this questionnaire with their priority
+    // Get questions
     const questions = await db.query(`
       SELECT 
-        q.id,
-        q.text,
-        q.type,
-        q.options,
+        q.id, 
+        q.text, 
+        q.type, 
         qq.priority
       FROM 
         questions q
@@ -53,15 +51,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         qq.questionnaire_id = $1
       ORDER BY 
         qq.priority ASC, q.id ASC
-    `, [questionnaireId]);
+    `, [id]);
+
+    // For each multiple choice question, fetch its options
+    const questionsWithOptions = await Promise.all(questions.rows.map(async (question) => {
+      if (question.type === 'multiple_choice') {
+        const optionsResult = await db.query(`
+          SELECT id, option_text 
+          FROM question_options 
+          WHERE question_id = $1
+        `, [question.id]);
+        
+        return {
+          ...question,
+          options: optionsResult.rows.map(opt => opt.option_text)
+        };
+      }
+      
+      return question;
+    }));
 
     // Return combined data
     return res.status(200).json({
       ...questionnaire.rows[0],
-      questions: questions.rows
+      questions: questionsWithOptions
     });
   } catch (error: any) {
-    console.error('Error fetching questionnaire details:', error);
-    return res.status(500).json({ error: 'Failed to fetch questionnaire details' });
+    console.error('Error fetching questionnaire:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 } 

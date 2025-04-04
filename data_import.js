@@ -7,17 +7,17 @@ const path = require('path');
 
 // Database connection
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
+  user: process.env.PGUSER || 'alecposner',
+  host: process.env.PGHOST || 'localhost',
   database: 'bioverse_questionnaire',
-  password: 'postgres',
-  port: 5432,
+  password: process.env.PGPASSWORD || '',
+  port: process.env.PGPORT || 5432,
 });
 
 // File paths
-const questionnairesFile = path.join(__dirname, '../data/questionnaire_questionnaires.csv');
-const questionsFile = path.join(__dirname, '../data/questionnaire_questions.csv');
-const junctionFile = path.join(__dirname, '../data/questionnaire_junction.csv');
+const questionnairesFile = path.join(__dirname, 'data/questionnaire_questionnaires.csv');
+const questionsFile = path.join(__dirname, 'data/questionnaire_questions.csv');
+const junctionFile = path.join(__dirname, 'data/questionnaire_junction.csv');
 
 // Parse CSV and return as array of objects
 function parseCSV(filePath) {

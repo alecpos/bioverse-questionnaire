@@ -14,6 +14,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   refreshToken: () => Promise<boolean>;
+  clearInvalidCredentials: () => void;
 }
 
 // Cookie options - Updated to ensure proper sharing between client and server
@@ -32,6 +33,7 @@ export const AuthContext = createContext<AuthContextType>({
   login: async () => false,
   logout: () => {},
   refreshToken: async () => false,
+  clearInvalidCredentials: () => {},
 });
 
 // Context Provider
@@ -44,9 +46,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const router = useRouter();
   const toast = useToast();
 
-  // Initialize auth state from cookies
+  // Function to clear invalid credentials
+  const clearInvalidCredentials = useCallback(() => {
+    console.log('Clearing invalid credentials due to token verification failure');
+    Cookies.remove('isLoggedIn');
+    Cookies.remove('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('bioverse_token_backup');
+    setIsLoggedIn(false);
+    setUser(null);
+    setIsAdmin(false);
+    
+    // Only redirect if we're not already on the login page
+    if (router.pathname !== '/') {
+      router.push('/');
+    }
+  }, [router]);
+
+  // Initialize auth state from cookies - update the useEffect to handle invalid tokens
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       console.log('Initializing auth state...');
       try {
         const loginStatus = Cookies.get('isLoggedIn') === 'true';
@@ -59,25 +78,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (userStr) {
             try {
               const userData = JSON.parse(userStr);
+              
+              // Set user data immediately to prevent flashing
               setUser(userData);
               setIsAdmin(userData.is_admin);
               setIsLoggedIn(true);
-              console.log('Authenticated as', userData.username, 'isAdmin:', userData.is_admin);
+              
+              // Then verify the token validity asynchronously (without causing rerender)
+              const currentToken = Cookies.get('token');
+              if (currentToken) {
+                try {
+                  const response = await axios.get('/api/auth/me', {
+                    headers: {
+                      Authorization: `Bearer ${currentToken}`
+                    }
+                  });
+                  
+                  if (!response.data.user) {
+                    // Only clear if token is invalid (silently)
+                    clearInvalidCredentials();
+                  }
+                } catch (err) {
+                  console.error('Token verification failed during init:', err);
+                  clearInvalidCredentials();
+                }
+              } else {
+                console.warn('No token found but login status is true');
+                clearInvalidCredentials();
+              }
             } catch (e) {
               console.error('Failed to parse user data:', e);
-              setIsLoggedIn(false);
-              setUser(null);
-              setIsAdmin(false);
-              localStorage.removeItem('user');
-              Cookies.remove('isLoggedIn');
-              Cookies.remove('token');
+              clearInvalidCredentials();
             }
           } else {
             // No user data but login cookie exists - clear inconsistent state
             console.warn('Login cookie exists but no user data found');
-            setIsLoggedIn(false);
-            Cookies.remove('isLoggedIn');
-            Cookies.remove('token');
+            clearInvalidCredentials();
           }
         } else {
           // Not logged in, make sure state is clean
@@ -87,9 +123,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (e) {
         console.error('Error during auth initialization:', e);
-        setIsLoggedIn(false);
-        setUser(null);
-        setIsAdmin(false);
+        clearInvalidCredentials();
       } finally {
         // Always update isLoading state, even in case of errors
         setIsLoading(false);
@@ -97,12 +131,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
     
-    // Delay auth initialization slightly to ensure it runs after component mount
-    setTimeout(initializeAuth, 100);
+    // Run auth initialization immediately instead of with delay
+    initializeAuth();
     
-    // Clean up any timeouts
-    return () => {};
-  }, []);
+    // No cleanup needed
+  }, [clearInvalidCredentials]);
 
   // Login function
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -161,22 +194,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Logout function
-  const logout = () => {
+  const logout = useCallback(async () => {
+    // Update isLoading state to prevent loading screen
+    setIsLoading(true);
+    
+    try {
+      // Call the logout API
+      await axios.post('/api/auth/logout');
+    } catch (error) {
+      console.error('Error calling logout API:', error);
+    }
+
     // Clear cookies and local storage
     Cookies.remove('isLoggedIn');
     Cookies.remove('token');
     localStorage.removeItem('user');
     localStorage.removeItem('bioverse_token_backup');
     
-    // Update state
+    // Update state - ensure we update isLoading to false
     setIsLoggedIn(false);
     setUser(null);
     setIsAdmin(false);
+    setIsLoading(false);
     
-    // Redirect to login page
-    router.push('/');
-    
-    // Show logout message
+    // Show logout message before redirect
     showToast(toast, {
       title: 'Logged out',
       description: 'You have been successfully logged out',
@@ -184,7 +225,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       duration: 3000,
       isClosable: true,
     });
-  };
+    
+    // Redirect to login page
+    router.push('/');
+  }, [router, toast]);
 
   // Add a token refresh function
   const refreshToken = useCallback(async (): Promise<boolean> => {
@@ -284,6 +328,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     logout,
     refreshToken,
+    clearInvalidCredentials,
   };
 
   // Provide the context to the app

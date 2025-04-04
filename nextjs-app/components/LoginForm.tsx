@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -14,6 +14,7 @@ import {
   AlertIcon,
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
+import Cookies from 'js-cookie';
 
 interface FormData {
   username: string;
@@ -26,12 +27,21 @@ interface FormErrors {
 }
 
 export const LoginForm: React.FC = () => {
-  const { login, user } = useAuth();
+  const { login, user, clearInvalidCredentials } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({ username: '', password: '' });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Clear any invalid tokens on form mount
+  useEffect(() => {
+    // Only clear tokens if there's an invalid one present, don't run on every mount
+    const hasInvalidToken = Cookies.get('token') && !user;
+    if (hasInvalidToken) {
+      clearInvalidCredentials();
+    }
+  }, [clearInvalidCredentials, user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -75,12 +85,14 @@ export const LoginForm: React.FC = () => {
     setIsLoading(true);
     setLoginError(null);
     
+    // Clear any existing tokens before attempting login
+    clearInvalidCredentials();
+    
     try {
       const success = await login(formData.username, formData.password);
       
       if (success) {
         // No need to redirect as AuthContext already handles this
-        // The router.push is done in the useEffect in the index.tsx page
         console.log('Login successful');
       } else {
         setLoginError('Invalid username or password');

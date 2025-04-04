@@ -1,153 +1,163 @@
-# BIOVERSE Intake Questionnaire System
+# Bioverse Questionnaire
 
-A web application that allows users to answer questionnaires and administrators to view all the answers provided by users. This system meets the requirements of the coding exercise, providing a complete solution for user intake questionnaires with a clean UI aligned with the BIOVERSE brand.
+A Next.js application for collecting and managing user questionnaire responses for Bioverse.
 
-## Features
+## Overview
 
-- **User Authentication:** Simple username/password login system
-- **Questionnaire Selection:** Users can select from available questionnaires
-- **Dynamic Questionnaire Forms:** Handles multiple-choice and text input questions
-- **Answer Pre-population:** Automatically fills in answers from previous questionnaires
-- **Answer Validation:** Ensures all questions are answered before submission
-- **Admin Dashboard:** Administrators can view all user responses and statistics
-- **BIOVERSE Branding:** Consistent styling with BIOVERSE brand colors and logo
+This application allows users to fill out questionnaires and administrators to view all user responses. It was built as per the requirements of the Bioverse Intake Questionnaire System exercise.
 
-## Demo Credentials
+## Live Demo
 
-### User Login
-- Username: `user`
-- Password: `user123`
+[Access the deployed application here](#) - Replace with your Vercel deployment URL
 
-### Admin Login
-- Username: `admin`
-- Password: `admin123`
+**Demo Credentials:**
+- Admin User: `admin` / `admin123`
+- Regular User: `user` / `user123` 
+- Additional Users: `john` / `password123`, `jane` / `password123`
+
+### Features
+
+- User authentication (simple username/password)
+- Dynamic questionnaire rendering from CSV data
+- Multiple question types support (text, multiple-choice)
+- Pre-filled responses for previously answered questions
+- Admin dashboard with completion statistics
+- Timezone-aware date display
+- CSV exports for questionnaire data
 
 ## Tech Stack
 
-- **Frontend:** React with Next.js
-- **UI Library:** Chakra UI
-- **Backend:** Next.js API Routes
-- **Database:** PostgreSQL
-- **Charting:** Chart.js with React-Chartjs-2
-- **Date Handling:** date-fns
+- **Frontend**: Next.js, TypeScript, Chakra UI
+- **Backend**: Next.js API routes
+- **Database**: PostgreSQL
+- **Authentication**: JWT (JSON Web Tokens)
+
+## Requirements Implemented
+
+All requirements from the exercise prompt have been implemented:
+
+### User Interface (Front-End)
+- ✅ Login Page with role-based redirection
+- ✅ Questionnaire Selection Page
+- ✅ Dynamic Questionnaire Page with validation
+- ✅ Admin Panel with user response viewing
+
+### Data Requirements
+- ✅ CSV import for questionnaires, questions, and junction data
+- ✅ Proper handling of "Select all that apply" questions
+- ✅ Pre-population of previously answered questions
+- ✅ Input validation (no empty/whitespace-only answers)
+
+### Admin Features
+- ✅ Dashboard with completion statistics
+- ✅ User management with response viewing
+- ✅ Response organization by questionnaire
+- ✅ Mobile-responsive design
+
+## Installation
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- PostgreSQL database
+
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/bioverse-questionnaire.git
+   cd bioverse-questionnaire
+   ```
+
+2. Set up the database:
+   ```bash
+   # Create database and set up schema
+   psql -c "CREATE DATABASE bioverse_questionnaire;"
+   psql -d bioverse_questionnaire -f schema.sql
+   ```
+
+3. Install dependencies:
+   ```bash
+   cd nextjs-app
+   npm install
+   ```
+
+4. Create a `.env.local` file:
+   ```
+   DATABASE_URL=postgresql://username:password@localhost:5432/bioverse_questionnaire
+   JWT_SECRET=your_secret_key_for_jwt
+   ```
+
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+6. Or use the provided setup script:
+   ```bash
+   bash run_app.sh
+   ```
+
+## Deployment
+
+For detailed deployment instructions, refer to:
+- [Vercel Deployment Guide](deploy-vercel.md)
+- [General Deployment Guide](DEPLOYMENT.md)
+
+### Quick Vercel Deployment
+
+1. Push your code to GitHub
+2. Connect your Vercel account to GitHub
+3. Import the repository in Vercel
+4. Set environment variables:
+   - `DATABASE_URL`
+   - `JWT_SECRET`
+5. Deploy
 
 ## Project Structure
 
 ```
 bioverse-questionnaire/
-├── data/                   # CSV data files for import
-│   ├── questionnaire_junction.csv
+├── data/                     # CSV input files
 │   ├── questionnaire_questionnaires.csv
-│   └── questionnaire_questions.csv
-├── db/                     # Database migrations
-│   └── migrations/
-│       ├── 01_init.sql
-│       └── 002_add_timezone_columns.sql
-├── lib/                    # Shared libraries
-│   └── db.ts              # Database connection
-├── nextjs-app/             # Main application
-│   ├── components/        # React components
-│   ├── contexts/          # Context providers
-│   ├── hooks/             # Custom React hooks
-│   ├── lib/               # Utility libraries
-│   ├── pages/             # Next.js pages and API routes
-│   ├── public/            # Static assets
-│   ├── scripts/           # Setup scripts
-│   └── utils/             # Utility functions
-├── schema.sql              # Database schema
-├── data_import.js          # Data import script
-└── docker-compose.yml      # Docker configuration
+│   ├── questionnaire_questions.csv
+│   └── questionnaire_junction.csv
+├── nextjs-app/
+│   ├── components/           # React components
+│   ├── contexts/             # React context providers
+│   ├── lib/                  # Utility libraries
+│   ├── pages/                # Next.js pages and API routes
+│   │   ├── api/              # Backend API endpoints
+│   │   ├── admin/            # Admin pages
+│   │   └── questionnaire/    # Questionnaire pages
+│   └── utils/                # Helper utilities
+└── scripts/                  # Setup and utility scripts
 ```
 
-## Setup Instructions
+## Database Schema
 
-### Prerequisites
+The application uses the following core tables:
+- `users` - User authentication data
+- `questionnaires` - Available questionnaires
+- `questions` - Question details including type and text
+- `questionnaire_questions` - Junction table linking questions to questionnaires
+- `question_options` - Options for multiple-choice questions
+- `user_responses` - Stored user answers
+- `questionnaire_completions` - Tracks completed questionnaires
 
-- Node.js (v14+ recommended)
-- PostgreSQL
+## Testing
 
-### Getting Started
+For detailed testing instructions, see [test-instructions.md](test-instructions.md).
 
-1. Clone the repository:
-```bash
-git clone https://github.com/alecpos/bioverse-questionnaire.git
-cd bioverse-questionnaire
-```
+## Contributing
 
-2. Set up the database:
-```bash
-# Create the database
-createdb bioverse_questionnaire
-
-# Apply the schema
-psql -d bioverse_questionnaire -f schema.sql
-
-# Or use the migrations
-psql -d bioverse_questionnaire -f db/migrations/01_init.sql
-psql -d bioverse_questionnaire -f db/migrations/002_add_timezone_columns.sql
-```
-
-3. Install dependencies:
-```bash
-cd nextjs-app
-npm install
-```
-
-4. Configure the database connection:
-Create or modify `.env.local` file in the nextjs-app directory:
-```
-DATABASE_URL=postgresql://yourusername:yourpassword@localhost:5432/bioverse_questionnaire
-```
-
-5. Import the CSV data:
-```bash
-node scripts/import-csv.js
-```
-
-6. Start the development server:
-```bash
-npm run dev
-```
-
-The application will be available at http://localhost:3000.
-
-### Using Docker (Alternative)
-
-If you prefer Docker:
-
-1. Update the database configuration in `docker-compose.yml`
-2. Start the containers:
-```bash
-docker-compose up -d
-```
-
-## Deployment
-
-To deploy the application:
-
-1. Build the application:
-```bash
-npm run build
-```
-
-2. Start the production server:
-```bash
-npm start
-```
-
-For cloud deployment, this application is ready for platforms like Vercel or Netlify. Make sure to configure your environment variables for database connection.
-
-## Project Requirements Met
-
-- ✅ Login page with username/password
-- ✅ Questionnaire selection page
-- ✅ Dynamic questionnaire rendering
-- ✅ Pre-population of previously answered questions
-- ✅ Support for "Select all that apply" questions
-- ✅ Admin panel with user completion statistics
-- ✅ Detailed view of user responses
-- ✅ Professional UI with BIOVERSE branding
+Please see the [contributing guide](CONTRIBUTING.md) for details.
 
 ## License
 
-This project is MIT licensed. 
+This project is licensed under the MIT License.
+
+## Acknowledgments
+
+- The Bioverse Team
+- All contributors to this project

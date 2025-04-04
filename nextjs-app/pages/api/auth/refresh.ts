@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
-import { pool } from '../../../lib/db';
+import db from '../../../lib/db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'bioverse_secret_key_change_me_in_production';
+console.log('Refresh API using JWT_SECRET (first few chars):', JWT_SECRET?.substring(0, 5) + '...');
 
 export default async function handler(
   req: NextApiRequest,
@@ -27,7 +28,7 @@ export default async function handler(
       const decoded = jwt.verify(token, JWT_SECRET) as { id: number };
       
       // Get user information
-      const userResult = await pool.query(
+      const userResult = await db.query(
         'SELECT id, username, is_admin FROM users WHERE id = $1',
         [decoded.id]
       );

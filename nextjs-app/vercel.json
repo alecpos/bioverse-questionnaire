@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "JWT_SECRET": "@jwt_secret",
+    "NODE_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "DATABASE_URL": "@database_url",
+      "JWT_SECRET": "@jwt_secret"
+    }
+  }
+} 

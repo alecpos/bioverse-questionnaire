@@ -1,0 +1,50 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nextjs-app/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: 'nextjs-app/package-lock.json'
+          
+      - name: Install dependencies
+        run: |
+          cd nextjs-app
+          npm ci
+          
+      - name: Build application
+        run: |
+          cd nextjs-app
+          npm run build
+        env:
+          NODE_ENV: production
+          
+      # Uncomment and configure these steps when you're ready to deploy
+      
+      # - name: Deploy to hosting service
+      #   uses: some-deployment-action@v1
+      #   with:
+      #     api-token: ${{ secrets.DEPLOY_TOKEN }}
+      #     directory: nextjs-app/.next
+      
+      - name: Notify deployment
+        run: |
+          echo "Built the application successfully"
+          echo "Ready for deployment to your hosting provider" 

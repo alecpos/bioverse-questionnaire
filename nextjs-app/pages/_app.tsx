@@ -91,16 +91,24 @@ const theme = extendTheme({
           },
         },
         outline: {
-          borderColor: 'blue.500',
-          color: 'blue.500',
+          borderColor: 'currentColor',
+          color: 'inherit',
           _hover: {
-            bg: 'blue.50',
+            bg: 'gray.50',
           },
         },
         ghost: {
           color: 'blue.500',
           _hover: {
             bg: 'blue.50',
+          },
+        },
+        redOutline: {
+          borderColor: 'red.500',
+          color: 'red.500',
+          borderWidth: '1px',
+          _hover: {
+            bg: 'red.50',
           },
         },
       },
@@ -116,6 +124,18 @@ const theme = extendTheme({
         borderRadius: '4px',
         textTransform: 'none',
         fontWeight: 500,
+      },
+    },
+    IconButton: {
+      variants: {
+        redOutline: {
+          border: '1px solid',
+          borderColor: 'red.500',
+          color: 'red.500',
+          _hover: {
+            bg: 'red.50',
+          },
+        },
       },
     },
     Card: {
@@ -162,12 +182,6 @@ export default function App({ Component, pageProps }: AppProps) {
     return (
       <ChakraProvider theme={theme}>
         <Head>
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet"
-          />
           <link rel="icon" href="/65b7f40d5dcd71efcf9bbe8a_BIOVERSE Branding_Option 1 (1).png" />
           <title>BIOVERSE Questionnaire - Error</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -228,12 +242,6 @@ export default function App({ Component, pageProps }: AppProps) {
     return (
       <ChakraProvider theme={theme}>
         <Head>
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet"
-          />
           <link rel="icon" href="/65b7f40d5dcd71efcf9bbe8a_BIOVERSE Branding_Option 1 (1).png" />
           <title>BIOVERSE Questionnaire</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />

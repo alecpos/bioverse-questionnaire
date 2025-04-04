@@ -435,7 +435,7 @@ export default function AdminDashboard() {
       <Container maxW="container.xl" py={8}>
         <Flex justify="space-between" align="center" mb={8}>
           <Heading size="lg" color={headingColor}>Admin Dashboard</Heading>
-          <Button leftIcon={<RepeatIcon />} colorScheme="blue" onClick={handleRefresh}>
+          <Button leftIcon={<RepeatIcon />} colorScheme="blue" variant="outline" onClick={handleRefresh}>
             Refresh
           </Button>
         </Flex>
@@ -477,12 +477,6 @@ export default function AdminDashboard() {
                     questionnaireStats={(dashboardStats.nonPendingStats || []) as any} 
                   />
                   
-                  <Box mt={8}>
-                    <AdminTimeSeriesChart 
-                      timeSeriesData={dashboardStats.timeSeriesData} 
-                      title="Questionnaire Completions (Last 7 Days)"
-                    />
-                  </Box>
                 </Box>
               )}
             </TabPanel>

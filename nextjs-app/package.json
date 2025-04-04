@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "kill -9 $(lsof -t -i:3000) 2>/dev/null || true && next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "killservers": "./kill-servers.sh",
     "test": "jest",
     "test:watch": "jest --watch"
   },
@@ -23,6 +24,7 @@
     "chart.js": "^4.4.8",
     "cookie": "^0.6.0",
     "csv-parse": "^5.6.0",
+    "csv-parser": "^3.2.0",
     "framer-motion": "^10.16.5",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
@@ -38,6 +40,7 @@
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.1",
+    "@types/cookie": "^0.6.0",
     "@types/jest": "^29.5.10",
     "@types/node": "^20",
     "@types/pg": "^8.10.9",

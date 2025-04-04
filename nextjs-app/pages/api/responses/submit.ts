@@ -70,7 +70,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
           // Update existing response
           await client.query(`
             UPDATE user_responses
-            SET response_text = $1, updated_at = NOW()
+            SET response_text = $1
             WHERE id = $2
           `, [formattedAnswer, existingResponse.rows[0].id]);
         } else {
@@ -86,16 +86,20 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       console.log('Storing questionnaire completion with timezone info:');
       console.log('- userId:', userId);
       console.log('- questionnaireId:', questionnaireId);
-      console.log('- timezone.name:', timezone.name || 'not provided');
-      console.log('- timezone.offset:', timezone.offset || 'not provided');
-            
+      
+      // Always use EST timezone regardless of what was submitted
+      const estTimezone = {
+        name: 'America/New_York',
+        offset: '-05:00'
+      };
+      
       await client.query(
         `INSERT INTO questionnaire_completions 
-         (user_id, questionnaire_id, completed_at, timezone_name, timezone_offset) 
-         VALUES ($1, $2, NOW(), $3, $4)
-         ON CONFLICT (user_id, questionnaire_id) 
-         DO UPDATE SET completed_at = NOW(), timezone_name = $3, timezone_offset = $4`,
-        [userId, questionnaireId, timezone.name, timezone.offset]
+          (user_id, questionnaire_id, completed_at, timezone_name, timezone_offset) 
+          VALUES ($1, $2, NOW(), $3, $4)
+          ON CONFLICT (user_id, questionnaire_id) 
+          DO UPDATE SET completed_at = NOW(), timezone_name = $3, timezone_offset = $4`,
+        [userId, questionnaireId, estTimezone.name, estTimezone.offset]
       );
     });
     

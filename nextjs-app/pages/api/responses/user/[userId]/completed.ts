@@ -48,19 +48,45 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       return res.status(200).json([]);
     }
     
-    // Get user's completed questionnaires with completion dates and timezone info
-    const result = await db.query(`
+    // Check if timezone columns exist
+    let timezoneColumnsExist = false;
+    try {
+      const columnCheckResult = await db.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns 
+          WHERE table_schema = 'public' 
+          AND table_name = 'questionnaire_completions'
+          AND column_name = 'timezone_name'
+        )
+      `);
+      timezoneColumnsExist = columnCheckResult.rows[0].exists;
+    } catch (err) {
+      console.error('Error checking for timezone columns:', err);
+      timezoneColumnsExist = false;
+    }
+    
+    let query = `
       SELECT 
         q.id,
         q.name,
-        qc.completed_at,
+        qc.completed_at`;
+        
+    // Only include timezone columns if they exist
+    if (timezoneColumnsExist) {
+      query += `,
         qc.timezone_name,
-        qc.timezone_offset
+        qc.timezone_offset`;
+    }
+    
+    query += `
       FROM questionnaire_completions qc
       JOIN questionnaires q ON qc.questionnaire_id = q.id
       WHERE qc.user_id = $1
       ORDER BY qc.completed_at DESC
-    `, [requestedUserId]);
+    `;
+    
+    // Get user's completed questionnaires with completion dates and timezone info
+    const result = await db.query(query, [requestedUserId]);
     
     console.log(`Found ${result.rows.length} completed questionnaires for user ${requestedUserId}`);
     

@@ -20,36 +20,23 @@ export const formatLocalDateTime = (
   tzOffset?: string
 ): string => {
   try {
-    // Log all parameters for debugging
-    console.log('formatLocalDateTime called with:');
-    console.log('- dateString:', dateString);
-    console.log('- options:', JSON.stringify(options));
-    console.log('- tzName:', tzName || 'not provided');
-    console.log('- tzOffset:', tzOffset || 'not provided');
-    
-    // Create a hardcoded UTC date for the received string
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    console.log(`User's browser timezone: ${userTimezone}`);
-    
-    // The database stores dates in UTC (or maybe EST/EDT)
+    // Create a date object from the input string
     const dbDate = new Date(dateString);
-    console.log(`Original date parsed: ${dbDate.toString()}`);
-    console.log(`Original date in ISO: ${dbDate.toISOString()}`);
-    console.log(`Original date in UTC: ${dbDate.toUTCString()}`);
-    console.log(`Original date in user locale: ${dbDate.toLocaleString()}`);
     
-    // Apply a -4 hour offset (assuming EST)
+    // Always use EST timezone (UTC-5) regardless of user browser timezone
+    // Note: We use -5 for EST (not EDT which would be -4)
     const estDate = new Date(dbDate);
-    estDate.setHours(estDate.getHours() - 4);
-    console.log(`Date adjusted for EST (UTC-4): ${estDate.toString()}`);
-
-    // Format with browser's locale/timezone
+    estDate.setHours(dbDate.getHours() - 5);
+    
+    // Format with browser's locale but force EST timezone
     const formatted = new Intl.DateTimeFormat(
       navigator.language || 'en-US',
-      options
-    ).format(estDate);
+      {
+        ...options,
+        timeZone: 'America/New_York' // Force EST/EDT timezone
+      }
+    ).format(dbDate); // Use original date as timeZone option handles the conversion
     
-    console.log(`Final formatted date: ${formatted}`);
     return formatted;
   } catch (e) {
     console.error('Error formatting date:', e, dateString);
@@ -58,40 +45,19 @@ export const formatLocalDateTime = (
 };
 
 /**
- * Get current timezone name from browser
- * @returns Timezone name (e.g., "America/New_York") or fallback
+ * Get EST timezone name
+ * @returns Always returns "America/New_York" for EST timezone
  */
 export const getUserTimezone = (): string => {
-  try {
-    // Get the browser's timezone
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    console.log(`User's detected timezone: ${timezone}`);
-    return timezone;
-  } catch (e) {
-    console.error('Error getting user timezone:', e);
-    return 'UTC'; // Fallback to UTC
-  }
+  // Always use EST timezone instead of user's browser timezone
+  return 'America/New_York';
 };
 
 /**
- * Get timezone offset string in format "+/-HH:MM"
- * @returns Formatted timezone offset
+ * Get EST timezone offset string
+ * @returns Always returns "-05:00" for EST timezone (not EDT)
  */
 export const getTimezoneOffsetString = (): string => {
-  try {
-    // Get browser's timezone offset in minutes (note: getTimezoneOffset returns opposite sign)
-    const offset = new Date().getTimezoneOffset();
-    const hours = Math.abs(Math.floor(offset / 60));
-    const minutes = Math.abs(offset % 60);
-    // Note: JavaScript's getTimezoneOffset returns the opposite sign of what we need
-    // If offset is negative (e.g., -300 for EST), we need a + sign
-    const sign = offset <= 0 ? '+' : '-';
-    
-    const result = `${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    console.log(`User's timezone offset: ${result} (raw offset: ${offset} minutes)`);
-    return result;
-  } catch (e) {
-    console.error('Error getting timezone offset:', e);
-    return '+00:00'; // Fallback to UTC
-  }
+  // Always use EST timezone offset (-05:00) instead of user's browser timezone
+  return '-05:00';
 }; 

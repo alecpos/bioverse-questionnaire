@@ -76,7 +76,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         LEFT JOIN questionnaire_completions qc 
           ON ur.user_id = qc.user_id AND ur.questionnaire_id = qc.questionnaire_id
         WHERE ur.user_id = $1
-        ORDER BY ur.questionnaire_id, q.priority
+        ORDER BY ur.questionnaire_id, q.id
       `, [userId]);
       
       // Process responses
@@ -126,7 +126,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       let csvRows = [];
       
       // Add header row
-      csvRows.push(['User ID', 'Username', 'Email', 'Questionnaire', 'Question', 'Response', 'Date']);
+      csvRows.push(['User ID', 'Username', 'Questionnaire', 'Question', 'Response', 'Date']);
       
       // Add data rows for each questionnaire
       Object.values(responsesByQuestionnaire).forEach((questionnaire: any) => {
@@ -144,7 +144,6 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
           csvRows.push([
             user.id,
             user.username,
-            user.email || '',
             response.questionnaire_name,
             response.question_text,
             responseText,

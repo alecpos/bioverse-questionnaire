@@ -40,7 +40,7 @@ export const AdminTimeSeriesChart: React.FC<AdminTimeSeriesChartProps> = ({
   const bgColor = 'white';
   const borderColor = 'gray.200';
   
-  // Fill in missing dates in the last 7 days
+  // Fill in missing dates in the last 30 days
   const filledData = fillMissingDates(timeSeriesData);
   
   const data = {
@@ -135,9 +135,9 @@ function fillMissingDates(data: TimeSeriesDataPoint[]): TimeSeriesDataPoint[] {
     dateMap.set(item.date, item.count);
   });
   
-  // Get date range for the last 7 days
+  // Get date range for the last 30 days
   const today = new Date();
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 29; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format

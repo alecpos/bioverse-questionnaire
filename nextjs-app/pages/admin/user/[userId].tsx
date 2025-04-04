@@ -263,6 +263,8 @@ export default function UserResponsesPage() {
           mb={6}
           onClick={() => router.push('/admin')}
           size="sm"
+          variant="outline"
+          colorScheme="blue"
         >
           Back to Dashboard
         </Button>
@@ -422,8 +424,7 @@ export default function UserResponsesPage() {
                                   aria-label="Delete responses"
                                   icon={<DeleteIcon />}
                                   size="sm"
-                                  colorScheme="red"
-                                  variant="ghost"
+                                  variant="redOutline"
                                   onClick={() => {
                                     setSelectedQuestionnaire(questionnaire);
                                     onOpen();

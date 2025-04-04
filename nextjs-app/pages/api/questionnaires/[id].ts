@@ -27,48 +27,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const questionnaire = questionnaireResult.rows[0];
     
     // Get questions for this questionnaire using the junction table
+    // Include the options column which is JSONB format
     const questionsResult = await db.query(`
       SELECT 
         q.id, 
         q.text, 
         q.type, 
-        qq.priority,
-        q.options
+        q.options,
+        qq.priority
       FROM questions q
       JOIN questionnaire_questions qq ON q.id = qq.question_id
       WHERE qq.questionnaire_id = $1
       ORDER BY qq.priority ASC
     `, [id]);
     
-    // Parse the JSONB options for multiple choice questions
-    const questions = questionsResult.rows.map(question => {
-      if (question.type === 'multiple_choice' && question.options) {
-        try {
-          // If options is already a parsed object, use it directly
-          // Otherwise, if it's a string, parse it
-          const parsedOptions = typeof question.options === 'string' 
-            ? JSON.parse(question.options) 
-            : question.options;
-          
-          return {
-            ...question,
-            options: parsedOptions
-          };
-        } catch (error) {
-          console.error('Error parsing options for question', question.id, error);
-          return question;
-        }
+    // Process questions - for backward compatibility, if options column is null
+    // but type is multiple_choice, fetch options from separate table
+    const questionsWithOptions = await Promise.all(questionsResult.rows.map(async (question) => {
+      // If multiple_choice but no options in the JSONB column
+      if (question.type === 'multiple_choice' && (!question.options || question.options.length === 0)) {
+        const optionsResult = await db.query(`
+          SELECT id, option_text 
+          FROM question_options 
+          WHERE question_id = $1
+        `, [question.id]);
+        
+        return {
+          ...question,
+          options: optionsResult.rows.map(opt => opt.option_text)
+        };
       }
       
       return question;
-    });
+    }));
     
     // Return the questionnaire with its questions
     return res.status(200).json({
       id: questionnaire.id,
       name: questionnaire.name,
       description: questionnaire.description,
-      questions
+      questions: questionsWithOptions
     });
   } catch (error) {
     console.error('Error fetching questionnaire:', error);

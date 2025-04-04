@@ -1,89 +1,126 @@
-# Bioverse Questionnaire System
+# Bioverse Questionnaire Application
 
-A platform for creating, managing, and analyzing questionnaires.
+This Next.js application provides a user-friendly interface for questionnaire submission and administration.
 
-## Features
+## Quick Start
 
-- User authentication and authorization
-- Questionnaire creation and management
-- Questionnaire form filling with progress tracking
-- Admin dashboard with analytics
-- CSV data import and export
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v14 or later)
-- PostgreSQL database
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
+1. Install dependencies:
    ```bash
    npm install
    ```
-3. Configure your database connection in `.env.local`:
+
+2. Set up environment variables:
+   - Create `.env.local` file based on `.env.example`
    ```
-   DATABASE_URL=postgres://user:password@localhost:5432/bioverse_questionnaire
-   JWT_SECRET=your_jwt_secret
+   DATABASE_URL=postgresql://username:password@localhost:5432/bioverse_questionnaire
+   JWT_SECRET=your_secret_key_for_jwt
    ```
-4. Run database migrations (if needed)
-5. Start the development server:
+
+3. Run the development server:
    ```bash
    npm run dev
    ```
 
-## CSV Import Format
+4. Access the application at http://localhost:3000
 
-You can import questionnaires using the admin dashboard or via command line.
+## Available Users
 
-### CSV File Structure
+| Username | Password    | Role  |
+|----------|-------------|-------|
+| admin    | admin123    | Admin |
+| user     | user123     | User  |
+| john     | password123 | User  |
+| jane     | password123 | User  |
 
-Three CSV files are needed:
+## Application Structure
 
-1. **questionnaires.csv** - List of questionnaires
-   ```
-   id,name,description
-   1,Medical History,"Medical history questionnaire to gather patient information."
-   ```
+- `components/` - Reusable React components
+- `contexts/` - React Context providers for state management
+- `hooks/` - Custom React hooks
+- `lib/` - Utility functions and service modules
+- `pages/` - Next.js pages and API routes
+- `public/` - Static assets
+- `utils/` - Helper utilities
 
-2. **questions.csv** - All questions
-   ```
-   id,text,type,options
-   101,"What is your age?",text_input,
-   102,"Do you have allergies?",multiple_choice,"[""Yes"",""No""]"
-   ```
-   - Valid types: `text_input`, `multiple_choice`
-   - Options should be a JSON array string
+## API Routes
 
-3. **junctions.csv** - Links questionnaires to questions with priority
-   ```
-   questionnaire_id,question_id,priority
-   1,101,1
-   1,102,2
-   ```
-   - Priority determines question order (lower numbers shown first)
+### Authentication
+- `POST /api/auth/login` - Authenticates user and returns JWT token
+- `GET /api/auth/me` - Returns current user info
 
-### Importing via Admin Dashboard
+### Questionnaires
+- `GET /api/questionnaires` - Lists all questionnaires
+- `GET /api/questionnaires/:id` - Gets specific questionnaire details
+- `POST /api/responses/submit` - Submits questionnaire responses
 
-1. Log in as admin
-2. Go to the Admin Dashboard
-3. Click "Import Questionnaires from CSV"
-4. Upload all three CSV files
-5. Click Import
+### Admin
+- `GET /api/admin/user-responses` - Gets all user responses (admin only)
+- `GET /api/admin/dashboard-stats` - Gets dashboard statistics (admin only)
+- `GET /api/admin/user-responses/:userId` - Gets responses for a specific user (admin only)
 
-### Importing via Command Line
+## Features
+
+1. **Authentication**
+   - JWT-based authentication
+   - Role-based access control
+
+2. **Questionnaires**
+   - Dynamic rendering based on question type
+   - Multiple-choice and text input support
+   - Pre-population of previously answered questions
+   - Validation to prevent empty submissions
+
+3. **Admin Dashboard**
+   - Completion statistics
+   - User response viewing
+   - Time-series data visualization
+
+4. **User Experience**
+   - Responsive design for mobile and desktop
+   - Clean, intuitive interface
+   - Loading states and error handling
+
+## Development
+
+### Database Schema
+
+The application expects these database tables:
+
+- `users` - User authentication data
+- `questionnaires` - Available questionnaires
+- `questions` - Question details
+- `questionnaire_questions` - Junction table for questions to questionnaires
+- `question_options` - Options for multiple-choice questions
+- `user_responses` - Stored user answers
+- `questionnaire_completions` - Records of completed questionnaires
+
+### Running Tests
 
 ```bash
-# Using Node.js directly (recommended)
-node scripts/import-questionnaires.js path/to/questionnaires.csv path/to/questions.csv path/to/junctions.csv
-
-# Using TypeScript (if ts-node is properly configured)
-npx ts-node scripts/import-questionnaires.ts path/to/questionnaires.csv path/to/questions.csv path/to/junctions.csv
+npm test
 ```
 
-## License
+### Building for Production
 
-[MIT License](LICENSE) 
+```bash
+npm run build
+npm start
+```
+
+## Deployment
+
+### Vercel Deployment
+
+This application is optimized for Vercel deployment:
+
+1. Connect your GitHub repository to Vercel
+2. Set required environment variables
+3. Deploy
+
+The `vercel.json` file contains configuration for deployment.
+
+## Troubleshooting
+
+- **Database connection errors**: Ensure PostgreSQL is running and connection string is correct
+- **JWT errors**: Check that JWT_SECRET is set and matches between deployments
+- **Build failures**: Make sure Node.js v18+ is being used 

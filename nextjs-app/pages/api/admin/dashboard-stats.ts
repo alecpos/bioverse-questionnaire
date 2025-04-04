@@ -197,7 +197,6 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       SELECT 
         u.id, 
         u.username, 
-        u.email,
         COUNT(DISTINCT qc.questionnaire_id) as completed_questionnaires,
         (
           SELECT COUNT(*)
@@ -208,7 +207,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       LEFT JOIN 
         questionnaire_completions qc ON u.id = qc.user_id
       GROUP BY 
-        u.id, u.username, u.email
+        u.id, u.username
       ORDER BY 
         u.username
     `);
@@ -219,25 +218,25 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     // Time series data for completions over past 7 days
     const timeSeriesQuery = await db.query(`
       SELECT 
-        DATE(completed_at) as date,
+        DATE(completed_at AT TIME ZONE COALESCE(timezone_name, 'UTC')) as date,
         COUNT(*) as count
       FROM 
         questionnaire_completions
       WHERE 
-        completed_at > NOW() - INTERVAL '7 days'
+        completed_at > NOW() - INTERVAL '30 days'
       GROUP BY 
-        DATE(completed_at)
+        DATE(completed_at AT TIME ZONE COALESCE(timezone_name, 'UTC'))
       ORDER BY 
         date
     `);
     
-    // Create time series for the last 7 days with 0 for missing days
+    // Create time series for the last 30 days with 0 for missing days
     const today = new Date();
-    const lastWeekDates = [];
-    for (let i = 6; i >= 0; i--) {
+    const lastMonthDates = [];
+    for (let i = 29; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      lastWeekDates.push(date.toISOString().split('T')[0]); // Format as YYYY-MM-DD
+      lastMonthDates.push(date.toISOString().split('T')[0]); // Format as YYYY-MM-DD
     }
     
     // Create a map of date to count
@@ -250,7 +249,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     });
     
     // Fill in missing dates with zero counts
-    const timeSeriesData = lastWeekDates.map(date => ({
+    const timeSeriesData = lastMonthDates.map(date => ({
       date: date,
       count: dateCountMap.get(date) || 0
     }));

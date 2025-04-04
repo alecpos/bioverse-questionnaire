@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a Question
+    url: https://github.com/alecposner/bioverse-questionnaire/discussions/new?category=q-a
+    about: Ask a question about the project
+  - name: Feature Discussion
+    url: https://github.com/alecposner/bioverse-questionnaire/discussions/new?category=ideas
+    about: Discuss ideas for new features or improvements 

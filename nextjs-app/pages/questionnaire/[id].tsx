@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, FormEvent, useCallback, useMemo, memo, useRef } from 'react';
 import {
   Box,
   Button,
@@ -100,6 +100,10 @@ export default function QuestionnaireForm() {
   const [hasPrefilled, setHasPrefilled] = useState<boolean>(false);
   const [formModified, setFormModified] = useState<boolean>(false);
   const [hasCompletedQuestionnaire, setHasCompletedQuestionnaire] = useState<boolean>(false);
+  
+  // Refs to prevent unnecessary rerenders and multiple fetches
+  const hasLoadedPrefillDataRef = useRef<boolean>(false);
+  const isPreviousResponseFetchingRef = useRef<boolean>(false);
 
   // Generate colors - moved outside conditional renders
   const cardBg = useColorModeValue('white', 'gray.700');
@@ -111,6 +115,33 @@ export default function QuestionnaireForm() {
   const textColor = useColorModeValue('gray.600', 'gray.300');
   const checkboxBg = useColorModeValue('gray.50', 'gray.600');
   const checkboxBorderColor = useColorModeValue('gray.200', 'gray.600');
+
+  // Memoize the CustomCheckbox component to prevent unnecessary re-renders
+  const CustomCheckbox = memo(({ option, isPrefilled, ...props }: { option: string; isPrefilled: boolean; [key: string]: any }) => (
+  <Checkbox 
+    {...props}
+    value={option}
+    bg={isPrefilled ? prefillBg : regularBg}
+    p={2}
+    borderRadius="md"
+    borderColor={checkboxBorderColor}
+    _hover={{
+      bg: checkboxBg
+    }}
+  >
+    {option}
+  </Checkbox>
+), (prevProps, nextProps) => {
+  // Custom comparison function to enhance memo effectiveness
+  // Only re-render if these specific props change
+  return (
+    prevProps.option === nextProps.option &&
+    prevProps.isPrefilled === nextProps.isPrefilled &&
+    prevProps.isChecked === nextProps.isChecked
+  );
+});
+
+CustomCheckbox.displayName = 'CustomCheckbox';
 
   // Check if user is logged in and refresh token if needed
   useEffect(() => {
@@ -140,7 +171,9 @@ export default function QuestionnaireForm() {
   
   // Load questionnaire data with better error handling
   useEffect(() => {
-    if (id) {
+    if (id && !hasLoadedPrefillDataRef.current) {
+      // Set the flag to prevent multiple loads
+      hasLoadedPrefillDataRef.current = true;
       const fetchQuestionnaire = async () => {
         try {
           setIsLoading(true);
@@ -156,11 +189,28 @@ export default function QuestionnaireForm() {
             }
           });
           
-          setQuestionnaire(response.data);
+          // Prepare initial data structure
+          const questionnaireData = response.data;
+          const initialData: { [key: string]: any } = {};
           
-          // Check for previously saved responses
+          // Initialize form data
+          if (questionnaireData.questions && Array.isArray(questionnaireData.questions)) {
+            questionnaireData.questions.forEach((question: { id: number; type: string }) => {
+              if (question.type === 'multiple_choice') {
+                initialData[`question_${question.id}`] = [];
+              } else {
+                initialData[`question_${question.id}`] = '';
+              }
+            });
+          }
+
           try {
+            // If we're already fetching previous responses, don't start another fetch
+            if (isPreviousResponseFetchingRef.current) return;
+            isPreviousResponseFetchingRef.current = true;
+            
             const userId = user?.id || USER_INFO.id;
+            // Fetch previous responses in the same pass
             const previousResponsesResponse = await axios.get(
               `/api/responses/user/${userId}/questionnaire/${id}`,
               {
@@ -170,77 +220,54 @@ export default function QuestionnaireForm() {
               }
             );
             
+            // Apply previous responses if they exist
+            let finalFormData = { ...initialData };
+            let finalPrefillSource: { [key: string]: boolean } = {};
+            let hasAnyPrefilled = false;
+            let completedQuestionnaire = false;
+            
             if (previousResponsesResponse.data && previousResponsesResponse.data.questions) {
               const questionsWithResponses = previousResponsesResponse.data.questions;
-              const previousData: { [key: string]: any } = {};
-              const prefillSourceMap: { [key: string]: boolean } = {};
-              let hasAnyPrefilled = false;
               
-              // Format the responses for our form
+              // Process all responses at once
               questionsWithResponses.forEach((question: any) => {
                 if (question.answer !== null) {
-                  previousData[`question_${question.id}`] = question.answer;
-                  prefillSourceMap[`question_${question.id}`] = !!question.fromOtherQuestionnaire;
-                  
+                  finalFormData[`question_${question.id}`] = question.answer;
                   if (question.fromOtherQuestionnaire) {
+                    finalPrefillSource[`question_${question.id}`] = true;
                     hasAnyPrefilled = true;
-                  }
-                } else {
-                  // Initialize empty values for questions without answers
-                  if (question.type === 'multiple_choice') {
-                    previousData[`question_${question.id}`] = [];
-                  } else {
-                    previousData[`question_${question.id}`] = '';
                   }
                 }
               });
               
-              setFormData(previousData);
-              setPrefillSource(prefillSourceMap);
-              setHasPrefilled(hasAnyPrefilled);
-              setHasCompletedQuestionnaire(previousResponsesResponse.data.hasCompletedQuestionnaire);
-              
-              if (previousResponsesResponse.data.hasResponses) {
-                toast({
-                  title: 'Previous responses loaded',
-                  description: hasAnyPrefilled 
-                    ? 'Some answers were pre-filled from your responses to other questionnaires.'
-                    : 'Your previous answers have been loaded.',
-                  status: 'info',
-                  duration: 5000,
-                  isClosable: true,
-                });
-              }
-            } else {
-              // Initialize empty form data
-              initializeFormData(response.data.questions);
+              completedQuestionnaire = previousResponsesResponse.data.hasCompletedQuestionnaire;
             }
+            
+            // Set all state at once to prevent multiple renders
+            setQuestionnaire(questionnaireData);
+            setFormData(finalFormData);
+            setPrefillSource(finalPrefillSource);
+            setHasPrefilled(hasAnyPrefilled);
+            setHasCompletedQuestionnaire(completedQuestionnaire);
+            setIsLoading(false);
+            
           } catch (err: any) {
-            // More specific error handling for previous responses
-            if (err.response?.status === 401 || err.response?.status === 403) {
-              // Try to refresh token
-              const success = await refreshToken();
-              
-              if (success) {
-                // Re-fetch with new token
-                const newToken = Cookies.get('token');
-                // ... retry the fetch with new token ...
-              } else {
-                console.error('Authentication failed:', err);
-                setError('Your session has expired. Please log in again.');
-              }
-            } else {
-              console.log('No previous responses found, initializing empty form');
-              initializeFormData(response.data.questions);
-            }
+            console.log('Error loading previous responses:', err);
+            // If we fail to get previous responses, just use the empty initialized data
+            setQuestionnaire(questionnaireData);
+            setFormData(initialData);
+            setIsLoading(false);
+          } finally {
+            isPreviousResponseFetchingRef.current = false;
           }
         } catch (err: any) {
-          // Handle authentication errors in the main request
+          console.error('Error fetching questionnaire:', err);
+          
           if (err.response?.status === 401 || err.response?.status === 403) {
             const success = await refreshToken();
             if (!success) {
               setError('Your session has expired. Please log in again.');
-              toast({
+              showToast(toast, {
                 title: 'Session expired',
                 description: 'Please log in again to continue.',
                 status: 'error',
@@ -249,35 +276,16 @@ export default function QuestionnaireForm() {
               });
             }
           } else {
-            console.error('Error fetching questionnaire:', err);
             setError('Failed to load the questionnaire. Please try again later.');
           }
-        } finally {
           setIsLoading(false);
         }
       };
       
       fetchQuestionnaire();
     }
-  }, [id, toast, user, refreshToken]);
+  }, [id, user, refreshToken, toast]);
   
-  // Initialize empty form data
-  const initializeFormData = (questions: Question[]) => {
-    const initialData: { [key: string]: any } = {};
-    
-    if (questions && Array.isArray(questions)) {
-      questions.forEach(question => {
-        if (question.type === 'multiple_choice') {
-          initialData[`question_${question.id}`] = [];
-        } else {
-          initialData[`question_${question.id}`] = '';
-        }
-      });
-    }
-    
-    setFormData(initialData);
-  };
-
   // Add unsaved changes warning
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -296,24 +304,39 @@ export default function QuestionnaireForm() {
     };
   }, [formModified]);
 
-  // Create a reusable custom checkbox component
-  const CustomCheckbox = ({ option, isPrefilled, ...props }: { option: string; isPrefilled: boolean; [key: string]: any }) => (
-    <Checkbox 
-      {...props}
-      value={option}
-      bg={isPrefilled ? prefillBg : regularBg}
-      p={2}
-      borderRadius="md"
-      borderColor={checkboxBorderColor}
-      _hover={{
-        bg: checkboxBg
-      }}
-    >
-      {option}
-    </Checkbox>
-  );
-  
-  const handleTextChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Optimize handleCheckboxChange with useCallback to maintain referential equality
+  const handleCheckboxChange = useCallback((questionId: number, selectedValues: string[]) => {
+    const fieldName = `question_${questionId}`;
+    
+    // Batch state updates
+    setFormData(prev => {
+      const newFormData = { ...prev, [fieldName]: selectedValues };
+      
+      // Update other states in this batch
+      setFormModified(true);
+      
+      // Only update prefillSource if needed
+      if (prefillSource[fieldName]) {
+        setPrefillSource(prevSource => ({
+          ...prevSource,
+          [fieldName]: false
+        }));
+      }
+      
+      // Clear error when user selects an option
+      if (errors[fieldName]) {
+        setErrors(prevErrors => {
+          const newErrors = { ...prevErrors };
+          delete newErrors[fieldName];
+          return newErrors;
+        });
+      }
+      
+      return newFormData;
+    });
+  }, [prefillSource, errors]);
+
+  const handleTextChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
     // Sanitize input before storing
@@ -343,37 +366,9 @@ export default function QuestionnaireForm() {
         return newErrors;
       });
     }
-  };
+  }, [prefillSource, errors]);
 
-  const handleCheckboxChange = (questionId: number, selectedValues: string[]) => {
-    const fieldName = `question_${questionId}`;
-    setFormData(prev => ({
-      ...prev,
-      [fieldName]: selectedValues,
-    }));
-    
-    // Mark form as modified
-    setFormModified(true);
-    
-    // Once user modifies a pre-filled field, remove the "from other questionnaire" flag
-    if (prefillSource[fieldName]) {
-      setPrefillSource(prev => ({
-        ...prev,
-        [fieldName]: false
-      }));
-    }
-    
-    // Clear error when user selects an option
-    if (errors[fieldName]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[fieldName];
-        return newErrors;
-      });
-    }
-  };
-
-  const validateForm = (): boolean => {
+  const validateForm = useCallback((): boolean => {
     if (!questionnaire) return false;
     
     const newErrors: { [key: string]: string } = {};
@@ -395,9 +390,9 @@ export default function QuestionnaireForm() {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [questionnaire, formData, setErrors]);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
     
     if (!validateForm() || !questionnaire || !user) {
@@ -469,7 +464,7 @@ export default function QuestionnaireForm() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [validateForm, questionnaire, user, formData, id, setIsSubmitting, setFormModified, refetchQuestionnaires, router, toast]);
 
   const handleDeleteResponses = async () => {
     if (!questionnaire) return;
@@ -504,8 +499,18 @@ export default function QuestionnaireForm() {
           isClosable: true,
         });
         
-        // Reset form data
-        initializeFormData(questionnaire.questions);
+        // Reset form data with proper initialization
+        const emptyFormData: { [key: string]: any } = {};
+        if (questionnaire.questions && Array.isArray(questionnaire.questions)) {
+          questionnaire.questions.forEach(question => {
+            if (question.type === 'multiple_choice') {
+              emptyFormData[`question_${question.id}`] = [];
+            } else {
+              emptyFormData[`question_${question.id}`] = '';
+            }
+          });
+        }
+        setFormData(emptyFormData);
         
         // Reset prefill state
         setPrefillSource({});
@@ -533,6 +538,129 @@ export default function QuestionnaireForm() {
       setIsDeleting(false);
     }
   };
+
+  // Memoize form rendering with useMemo to prevent re-renders of the entire form
+  const questionnaireForm = useMemo(() => {
+    if (!questionnaire) return null;
+    
+    return (
+      <form onSubmit={handleSubmit}>
+        <Stack spacing={6}>
+          {questionnaire.questions.map((question) => {
+            const fieldName = `question_${question.id}`;
+            const isPrefilled = prefillSource[fieldName];
+            
+            return (
+              <FormControl key={question.id} isInvalid={!!errors[fieldName]}>
+                <HStack alignItems="flex-start" spacing={2}>
+                  <FormLabel mb={2} width="full">
+                    {question.text}
+                  </FormLabel>
+                  
+                  {isPrefilled && (
+                    <Tooltip 
+                      label="This answer was pre-filled from another questionnaire you completed" 
+                      placement="top"
+                      hasArrow
+                    >
+                      <Badge colorScheme="purple" borderRadius="full" px={2} ml={2}>
+                        Auto-filled
+                      </Badge>
+                    </Tooltip>
+                  )}
+                </HStack>
+                
+                {question.type === 'text' || question.type === 'text_input' ? (
+                  question.text.toLowerCase().includes('tell us') || 
+                  question.text.toLowerCase().includes('please list') ? (
+                    <Textarea
+                      name={fieldName}
+                      value={formData[fieldName] || ''}
+                      onChange={handleTextChange}
+                      placeholder="Enter your answer here..."
+                      size="md"
+                      bg={isPrefilled ? prefillBg : regularBg}
+                      borderColor={borderColor}
+                      _hover={{ borderColor: hoverBorderColor }}
+                    />
+                  ) : (
+                    <Input
+                      name={fieldName}
+                      value={formData[fieldName] || ''}
+                      onChange={handleTextChange}
+                      placeholder="Enter your answer here..."
+                      size="md"
+                      bg={isPrefilled ? prefillBg : regularBg}
+                      borderColor={borderColor}
+                      _hover={{ borderColor: hoverBorderColor }}
+                    />
+                  )
+                ) : (
+                  <CheckboxGroup
+                    value={formData[fieldName] || []}
+                    onChange={(values) => handleCheckboxChange(question.id, values as string[])}
+                  >
+                    <Stack spacing={2}>
+                      {question.options && question.options.length > 0 ? (
+                        question.options.map((option) => (
+                          <CustomCheckbox 
+                            key={option} 
+                            option={option}
+                            isPrefilled={isPrefilled}
+                          />
+                        ))
+                      ) : (
+                        <Text color="red.500">No options available for this question</Text>
+                      )}
+                    </Stack>
+                  </CheckboxGroup>
+                )}
+                
+                {errors[fieldName] && (
+                  <FormErrorMessage>{errors[fieldName]}</FormErrorMessage>
+                )}
+              </FormControl>
+            );
+          })}
+        </Stack>
+
+        <Flex mt={6} justifyContent="space-between">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/questionnaires')}
+          >
+            Cancel
+          </Button>
+          <Button
+            colorScheme="blue"
+            size="lg"
+            type="submit"
+            isLoading={isSubmitting}
+            loadingText="Submitting..."
+          >
+            Submit Questionnaire
+          </Button>
+        </Flex>
+      </form>
+    );
+  }, [
+    questionnaire, 
+    formData, 
+    prefillSource, 
+    errors, 
+    handleCheckboxChange, 
+    handleTextChange, 
+    isSubmitting, 
+    handleSubmit, 
+    prefillBg, 
+    regularBg, 
+    borderColor, 
+    hoverBorderColor,
+    router,
+    // Include CustomCheckbox to satisfy ESLint - this is safe since it's a memoized component
+    // that only rerenders when specific props change (option, isPrefilled, isChecked)
+    CustomCheckbox
+  ]);
 
   // Loading state
   if (isLoading) {
@@ -591,8 +719,7 @@ export default function QuestionnaireForm() {
                   <IconButton
                     aria-label="Delete responses"
                     icon={<DeleteIcon />}
-                    colorScheme="red"
-                    variant="outline"
+                    variant="redOutline"
                     onClick={onOpen}
                     size="sm"
                   />
@@ -636,104 +763,7 @@ export default function QuestionnaireForm() {
             </Box>
           </Box>
 
-          <form onSubmit={handleSubmit}>
-            <Stack spacing={6}>
-              {questionnaire.questions.map((question) => {
-                const fieldName = `question_${question.id}`;
-                const isPrefilled = prefillSource[fieldName];
-                
-                return (
-                  <FormControl key={question.id} isInvalid={!!errors[fieldName]}>
-                    <HStack alignItems="flex-start" spacing={2}>
-                      <FormLabel mb={2} width="full">
-                        {question.text}
-                      </FormLabel>
-                      
-                      {isPrefilled && (
-                        <Tooltip 
-                          label="This answer was pre-filled from another questionnaire you completed" 
-                          placement="top"
-                          hasArrow
-                        >
-                          <Badge colorScheme="purple" borderRadius="full" px={2} ml={2}>
-                            Auto-filled
-                          </Badge>
-                        </Tooltip>
-                      )}
-                    </HStack>
-                    
-                    {question.type === 'text' || question.type === 'text_input' ? (
-                      question.text.toLowerCase().includes('tell us') || 
-                      question.text.toLowerCase().includes('please list') ? (
-                        <Textarea
-                          name={fieldName}
-                          value={formData[fieldName] || ''}
-                          onChange={handleTextChange}
-                          placeholder="Enter your answer here..."
-                          size="md"
-                          bg={isPrefilled ? prefillBg : regularBg}
-                          borderColor={borderColor}
-                          _hover={{ borderColor: hoverBorderColor }}
-                        />
-                      ) : (
-                        <Input
-                          name={fieldName}
-                          value={formData[fieldName] || ''}
-                          onChange={handleTextChange}
-                          placeholder="Enter your answer here..."
-                          size="md"
-                          bg={isPrefilled ? prefillBg : regularBg}
-                          borderColor={borderColor}
-                          _hover={{ borderColor: hoverBorderColor }}
-                        />
-                      )
-                    ) : (
-                      <CheckboxGroup
-                        value={formData[fieldName] || []}
-                        onChange={(values) => handleCheckboxChange(question.id, values as string[])}
-                      >
-                        <Stack spacing={2}>
-                          {question.options && question.options.length > 0 ? (
-                            question.options.map((option) => (
-                              <CustomCheckbox 
-                                key={option} 
-                                option={option}
-                                isPrefilled={isPrefilled}
-                              />
-                            ))
-                          ) : (
-                            <Text color="red.500">No options available for this question</Text>
-                          )}
-                        </Stack>
-                      </CheckboxGroup>
-                    )}
-                    
-                    {errors[fieldName] && (
-                      <FormErrorMessage>{errors[fieldName]}</FormErrorMessage>
-                    )}
-                  </FormControl>
-                );
-              })}
-            </Stack>
-
-            <Flex mt={6} justifyContent="space-between">
-              <Button
-                variant="outline"
-                onClick={() => router.push('/questionnaires')}
-              >
-                Cancel
-              </Button>
-              <Button
-                colorScheme="blue"
-                size="lg"
-                type="submit"
-                isLoading={isSubmitting}
-                loadingText="Submitting..."
-              >
-                Submit Questionnaire
-              </Button>
-            </Flex>
-          </form>
+          {questionnaireForm}
         </VStack>
       </Container>
 
