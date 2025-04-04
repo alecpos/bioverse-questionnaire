@@ -254,7 +254,7 @@ const PendingQuestionnaires: React.FC<PendingQuestionnairesProps> = ({
             <UnorderedList mt={2}>
               {similarQuestionnaires.map((item, index) => (
                 <ListItem key={index}>
-                  "{item.importName}" is similar to existing "{item.existingName}" (ID: {item.existingId})
+                  &quot;{item.importName}&quot; is similar to existing &quot;{item.existingName}&quot; (ID: {item.existingId})
                 </ListItem>
               ))}
             </UnorderedList>

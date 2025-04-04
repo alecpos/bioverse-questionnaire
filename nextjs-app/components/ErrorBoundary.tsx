@@ -64,7 +64,7 @@ class ErrorBoundary extends Component<Props, State> {
           <Heading size="lg" mb={4}>Something went wrong</Heading>
           
           <Text mb={4}>
-            We've encountered an unexpected issue. Please try refreshing the page or clicking the button below to reset.
+            We&apos;ve encountered an unexpected issue. Please try refreshing the page or clicking the button below to reset.
           </Text>
           
           {this.state.error && (
