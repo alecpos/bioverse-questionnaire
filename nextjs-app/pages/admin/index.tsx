@@ -36,7 +36,7 @@ import {
 } from '@chakra-ui/react';
 import { ChevronLeftIcon, ChevronRightIcon, DownloadIcon, RepeatIcon } from '@chakra-ui/icons';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { formatDate, getColorByRate } from '../../utils/formatUtils';
 import Layout from '../../components/Layout';
 import { useAuth } from '../../contexts/AuthContext';
 import Cookies from 'js-cookie';
@@ -285,19 +285,8 @@ export default function AdminDashboard() {
     setCurrentPage(1); // Reset to first page when changing items per page
   };
   
-  // Format date for display
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A';
-    return format(new Date(dateString), 'MMM d, yyyy');
-  };
-  
-  // Get badge color based on completion rate
-  const getBadgeColor = (rate: number) => {
-    if (rate >= 80) return 'green';
-    if (rate >= 50) return 'yellow';
-    if (rate >= 30) return 'orange';
-    return 'red';
-  };
+  // Replace getBadgeColor with our utility function 
+  const getBadgeColor = getColorByRate;
   
   // Inside the AdminDashboard component
   // Add this function to handle questionnaire export

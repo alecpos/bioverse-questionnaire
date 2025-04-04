@@ -322,11 +322,13 @@ export const getAuthenticatedUser = async (
   return await getUserById(decodedToken.id);
 };
 
-export default {
+const authModule = {
   generateToken,
   verifyToken,
   authenticateUser,
   getUserById,
   createUser,
   getAuthenticatedUser,
-}; 
+};
+
+export default authModule; 
