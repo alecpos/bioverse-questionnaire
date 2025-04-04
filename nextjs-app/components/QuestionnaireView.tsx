@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -47,15 +47,7 @@ const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
   const [answers, setAnswers] = useState<UserAnswers>({});
   const [progress, setProgress] = useState<number>(0);
 
-  useEffect(() => {
-    // Initialize with provided answers
-    setAnswers(userAnswers || {});
-    
-    // Calculate initial progress
-    calculateProgress(userAnswers);
-  }, [userAnswers]);
-
-  const calculateProgress = (currentAnswers: UserAnswers) => {
+  const calculateProgress = useCallback((currentAnswers: UserAnswers) => {
     if (!questionnaire?.questions?.length) return 0;
     
     const totalQuestions = questionnaire.questions.length;
@@ -73,7 +65,15 @@ const QuestionnaireView: React.FC<QuestionnaireViewProps> = ({
     const progressPercentage = Math.round((answeredQuestions / totalQuestions) * 100);
     setProgress(progressPercentage);
     return progressPercentage;
-  };
+  }, [questionnaire]);
+
+  useEffect(() => {
+    // Initialize with provided answers
+    setAnswers(userAnswers || {});
+    
+    // Calculate initial progress
+    calculateProgress(userAnswers);
+  }, [userAnswers, calculateProgress]);
 
   const handleMultipleChoiceChange = (questionId: number, option: string, checked: boolean) => {
     const currentAnswers = answers[questionId] || [];
