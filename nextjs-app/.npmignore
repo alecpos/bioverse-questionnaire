@@ -1,0 +1,91 @@
+# Source control
+.git
+.github
+.gitignore
+.gitattributes
+
+# Development files
+*.test.js
+*.test.ts
+*.test.tsx
+*.spec.js
+*.spec.ts
+*.spec.tsx
+__tests__
+__mocks__
+test
+tests
+coverage
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+tsconfig.json
+jest.config.js
+.eslintcache
+*.stories.*
+
+# Build artifacts
+.next
+out
+dist
+.cache
+.tmp
+.temp
+*.log
+logs
+
+# Environment
+.env*
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Dependencies - keep only production ones
+node_modules
+/scripts
+
+# Editor files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Documentation and examples
+docs
+examples
+*.md
+!README.md
+
+# Configuration files not needed in published package
+.babelrc
+.editorconfig
+.travis.yml
+.circleci
+.github
+.husky
+tsconfig.*.json
+.prettierignore
+jest.*.js
+.nvmrc
+
+# DevOps
+Dockerfile
+docker-compose*
+.dockerignore
+
+# Debug files
+.debug
+*.stackdump
+
+# Backup files
+*~
+*.bak
+
+# Temporary script files
+*.sh
+*.cmd
+*.bat
+*.ps1 
