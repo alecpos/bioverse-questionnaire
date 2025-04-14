@@ -47,7 +47,7 @@
     "@types/cookie": "^0.6.0",
     "@types/jest": "^29.5.10",
     "@types/node": "^20",
-    "@types/pg": "^8.10.9",
+    "@types/pg": "^8.11.13",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
